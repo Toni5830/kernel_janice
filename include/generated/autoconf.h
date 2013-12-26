@@ -1,6 +1,6 @@
 /*
  * Automatically generated C config: don't edit
- * Linux/arm 3.0.33 Kernel Configuration
+ * Linux/arm 3.0.34 Kernel Configuration
  */
 #define CONFIG_RING_BUFFER 1
 #define CONFIG_NF_CONNTRACK_H323 1
@@ -684,7 +684,7 @@
 #define CONFIG_RCU_CPU_STALL_VERBOSE 1
 #define CONFIG_USB_ANDROID_PHONET 1
 #define CONFIG_GENERIC_HWEIGHT 1
-#define CONFIG_INITRAMFS_SOURCE "/Volumes/Android/Kernel/ramdisk/ramdisk-cwm-touch-6.0.3.3"
+#define CONFIG_INITRAMFS_SOURCE "/Volumes/Android/kernels/janice/ramdisk/ramdisk-cwm-touch-6.0.3.3"
 #define CONFIG_HWREG_MODULE 1
 #define CONFIG_CGROUPS 1
 #define CONFIG_MMC 1
