@@ -1,6 +1,4 @@
- HEAD
- 
- # Object files in subdirectories
+# Object files in subdirectories
   
  
 obj-y        += startup_reason/
