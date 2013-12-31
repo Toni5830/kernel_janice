@@ -1,12 +1,13 @@
 /*
  * Automatically generated C config: don't edit
- * Linux/arm 3.0.38 Kernel Configuration
+ * Linux/arm 3.0.45 Kernel Configuration
  */
 #define CONFIG_RING_BUFFER 1
 #define CONFIG_NF_CONNTRACK_H323 1
 #define CONFIG_SCSI_DMA 1
 #define CONFIG_KERNEL_GZIP 1
 #define CONFIG_REGULATOR_AB8500 1
+#define CONFIG_BROADCOM_WIFI_RESERVED_MEM 1
 #define CONFIG_INPUT_KEYBOARD 1
 #define CONFIG_RFS_ACCEL 1
 #define CONFIG_IP_NF_TARGET_REDIRECT 1
