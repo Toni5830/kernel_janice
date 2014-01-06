@@ -930,38 +930,8 @@ unsigned short sec_common_update_reboot_reason(char mode, const char *cmd)
 		reason = REBOOTMODE_DOWNLOAD;
 		break;
 	default:		/* reboot mode = normal */
-		/*
-		printk (KERN_INFO "sec_common_update_reboot_reason:\n    sec_get_debug_enable=%d\n    sec_get_debug_enable_user=%d\n", sec_get_debug_enable(), sec_get_debug_enable_user());
-		*/
-		if( sec_get_debug_enable() || sec_get_debug_enable_user() )
-		{
-			switch (mode) {
-#ifdef CONFIG_SAMSUNG_KERNEL_DEBUG
-			case 'L':		/* reboot mode = Lockup */
-				reason = REBOOTMODE_KERNEL_PANIC;
-				break;
-			case 'F':
-			case 'K':
-				reason = REBOOTMODE_FORCED_UPLOAD;
-				break;
-			case 'U':		/* reboot mode = Lockup */
-				reason = REBOOTMODE_USER_PANIC;
-				break;
-			case 'C':		/* reboot mode = Lockup */
-				reason = REBOOTMODE_CP_CRASH;
-				break;
-			case 'M':		/* reboot mode = Lockup */
-				reason = REBOOTMODE_MMDSP_CRASH;
-				break;
-#endif /* CONFIG_SAMSUNG_KERNEL_DEBUG */
-			default:
-				reason = REBOOTMODE_NORMAL;
-				break;
-			}
-		}else{
-			reason = REBOOTMODE_NORMAL;
-			break;
-		}
+		reason = REBOOTMODE_NORMAL;
+		break;
 	}
 
 #if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
