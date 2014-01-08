@@ -74,6 +74,9 @@
 #include <linux/time.h>
 #include <htsf.h>
 
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+
 #define HTSF_MINLEN 200    /* min. packet length to timestamp */
 #define HTSF_BUS_DELAY 150 /* assume a fix propagation in us  */
 #define TSMAX  1000        /* max no. of timing record kept   */
@@ -361,8 +364,8 @@ uint dhd_download_fw_on_driverload = TRUE;
 /* Definitions to provide path to the firmware and nvram
  * example nvram_path[MOD_PARAM_PATHLEN]="/projects/wlan/nvram.txt"
  */
-char firmware_path[MOD_PARAM_PATHLEN];
-char nvram_path[MOD_PARAM_PATHLEN];
+char firmware_path[MOD_PARAM_PATHLEN]="/system/etc/wifi/bcmdhd_sta.bin";
+char nvram_path[MOD_PARAM_PATHLEN]="/system/etc/wifi/nvram_net.txt";
 
 /* information string to keep firmware, chio, cheip version info visiable from log */
 char info_string[MOD_PARAM_INFOLEN];
@@ -535,6 +538,9 @@ static void dhd_net_if_unlock_local(dhd_info_t *dhd);
 static void dhd_suspend_lock(dhd_pub_t *dhdp);
 static void dhd_suspend_unlock(dhd_pub_t *dhdp);
 
+bool wifi_pm = false;
+module_param(wifi_pm, bool, 0755);
+
 #ifdef WLMEDIA_HTSF
 void htsf_update(dhd_info_t *dhd, void *data);
 tsf_t prev_tsf, cur_tsf;
@@ -671,6 +677,11 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 
 	DHD_TRACE(("%s: enter, value = %d in_suspend=%d\n",
 		__FUNCTION__, value, dhd->in_suspend));
+
+	if(wifi_pm) {
+		power_mode = PM_FAST;
+		printk(KERN_DEBUG "[%s]: Wifi Power Management Policy changed to PM_FAST \n",__func__);
+	}
 
 	dhd_suspend_lock(dhd);
 	if (dhd && dhd->up) {
