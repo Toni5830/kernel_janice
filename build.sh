@@ -67,8 +67,8 @@ make clean
 
 # Clean old built kernel in out folder 
 if [ -a $OUT/$KERNEL ]; then
-rm -r $OUT
-rm $KERNEL_DIR/$KERNEL
+rm -r $KERNEL Stig.zip
+rm -r $KERNEL_DIR/$KERNEL
 fi
 
 # Import Defconfig
@@ -99,6 +99,7 @@ md5sum -t kernel.bin >> kernel.bin
 mv kernel.bin kernel.bin.md5
 $yellow
 echo "kernel.bin.md5 at $OUT/kernel.bin.md5"
+zip -r Stig.zip META-INF kernel.bin.md5
 # Remove VERSION File if exists
 $cyan
 echo "DONE, PRESS ENTER TO FINISH"
