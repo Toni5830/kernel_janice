@@ -628,26 +628,22 @@ static struct cpufreq_frequency_table db8500_freq_table[] = {
 	},
 	[2] = {
 		.index = 2,
-		.frequency = 600000,
-	},
-	[3] = {
-		.index = 3,
 		.frequency = 800000,
 	},
 	#if defined(CONFIG_MACH_GAVINI)
-	[4] = {
+	[3] = {
 		/* Used for MAX_OPP, if available */
-		.index = 4,
+		.index = 3,
 		.frequency = 1000000,
 	},
 	#else
-	[4] = {
-		.index = 4,
+	[3] = {
+		.index = 3,
 		.frequency = CPUFREQ_TABLE_END,
 	},
 	#endif
-	[5] = {
-		.index = 5,
+	[4] = {
+		.index = 4,
 		.frequency = CPUFREQ_TABLE_END,
 	},
 };
