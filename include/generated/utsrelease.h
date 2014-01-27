@@ -1,1 +1,1 @@
-#define UTS_RELEASE "3.0.71-TheStig+"
+#define UTS_RELEASE "3.0.74-TheStig+"
