@@ -67,8 +67,7 @@ make clean
 
 # Clean old built kernel in out folder 
 if [ -a $OUT/$KERNEL ]; then
-rm -r $KERNEL Stig.zip
-rm -r $KERNEL_DIR/$KERNEL
+rm -f $OUT/$KERNEL $OUT/Stig.zip
 fi
 
 # Import Defconfig
