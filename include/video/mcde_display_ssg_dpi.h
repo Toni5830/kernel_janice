@@ -61,6 +61,7 @@ struct ssg_dpi_display_platform_data {
 
 	/* reset lcd panel device. */
 	int (*reset)(struct ssg_dpi_display_platform_data *pd);
+	void	(*bl_on_off)(bool);
 	/* on or off to lcd panel. If 'enable' is 0 then
 	lcd power off and 1, lcd power on. */
 	void (*lcd_pwr_setup)(struct device *);	

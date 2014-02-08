@@ -158,11 +158,6 @@ static const struct input_device_id sec_common_input_log_ids[] = {
 	{ },    /* Terminating entry */
 };
 
-/* movinand checksum */
-static struct device *sec_checksum;
-static unsigned int sec_checksum_pass;
-static unsigned int sec_checksum_done;
-
 #include <linux/cpufreq.h>
 #include <linux/notifier.h>
 
@@ -267,6 +262,10 @@ static __init int setup_default_param(char *str)
 
 __setup("set_default_param=", setup_default_param);
 
+/* movinand checksum */
+static struct device *sec_checksum;
+static unsigned int sec_checksum_pass;
+static unsigned int sec_checksum_done;
 
 static __init int setup_checksum_pass(char *str)
 {
