@@ -2,17 +2,13 @@
 #
 # Kernel Build script for GT-I9070
 #
-# Written by Aditya Patange aka Adi_Pat adithemagnificent@gmail.com 
+# Written by Aditya Patange aka Adi_Pat 
 #
 # TO BUILD THE KERNEL- 
 #
 # Edit TOOLCHAIN path and INITRAMFS path accordingly. 
+# ./build.sh
 #
-# .version-number (default is 0)
-#
-# EXAMPLE: ./build.sh 10
-# Pass as a parameter
-# 
 
 ## Misc Stuff ##
 
@@ -29,7 +25,7 @@ normal='tput sgr0'
 
 # SET SOME PATH VARIABLES
 # Modify these as per requirements
-ROOT="/Volumes/Android"
+ROOT="/Volumes/Android/kernels"
 # Toolchain path = 
 TOOLCHAIN="/Volumes/Android/cm10.1/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.6/bin/arm-eabi"
 KERNEL_DIR="/Volumes/Android/kernels/janice"
@@ -40,8 +36,6 @@ DEFCONFIG="GT-I9070_defconfig" # Default
 KERNEL=kernel.bin.md5
 
 # More Misc stuff
-echo $2 > VERSION
-VERSION='cat VERSION'
 clear
 clear
 clear
@@ -61,16 +55,22 @@ $yello
 echo "-----------------------------------------------"
 echo "***********************************************"
 $normal
+echo "c -clear everything"
+echo "* -compile"
 
-echo ">> Cleaning source"
-make clean
+read opt
 
-# Clean old built kernel in out folder 
-if [ -a $OUT/$KERNEL ]; then
-rm -f $OUT/$KERNEL $OUT/Stig.zip
-fi
+case $opt in
 
-# Import Defconfig
+    c) make clean
+    rm -rf include/generated include/config
+    rm -f .config .version .config.old Module.symvers
+    if [ -a $OUT/$KERNEL ]; then
+    rm -f $OUT/$KERNEL $OUT/Stig.zip
+    fi
+    ;;
+
+    *) # Import Defconfig
 make $DEFCONFIG
 
 # Build Modules
@@ -109,8 +109,8 @@ $red
 echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
 echo "Compilation failed - Fix errors and recompile "
 echo "Press enter to end script"
-# Remove VERSION file if exists
 $normal
 read ANS
 fi
- 
+;;
+esac
