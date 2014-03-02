@@ -614,14 +614,17 @@ static void do_emergency_remount(struct work_struct *work)
 		spin_unlock(&sb_lock);
 		down_write(&sb->s_umount);
 		if (sb->s_root && sb->s_bdev && !(sb->s_flags & MS_RDONLY)) {
-			/* u8500: param.ko needs to update params.blk before rebooting */
-                        if (strcmp(sb->s_id, "mmcblk0p1") !=0)
-                        /*
-			 * What lock protects sb->s_flags??
+			/* FIXME: 
+			 * Samsung PARAM driver needs to save boot params
+			 * Workaround to fix this issue with CWM Recovery
+			 * Original idea: OliverG96@xda
 			 */
-			do_remount_sb(sb, MS_RDONLY, NULL, 1);
-                    else
-                         printk("Skipping read-only remount of mmcblk0p1\n");
+                        if (strcmp(sb->s_id, "mmcblk0p1")) {
+	                     /*
+				 * What lock protects sb->s_flags??
+				 */
+				do_remount_sb(sb, MS_RDONLY, NULL, 1);
+                    	}
 		}
 		up_write(&sb->s_umount);
 		spin_lock(&sb_lock);
