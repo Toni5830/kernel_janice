@@ -372,7 +372,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-                   -fno-delete-null-pointer-checks \
   		   -mtune=cortex-a9 \
   		   -march=armv7-a \
   		   -mfpu=neon
