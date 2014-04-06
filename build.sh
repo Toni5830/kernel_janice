@@ -11,12 +11,9 @@
 
 ## Misc Stuff ##
 
-red='tput setaf 1'
-green='tput setaf 2'
-yellow='tput setaf 3'
-blue='tput setaf 4'
-violet='tput setaf 5'
-cyan='tput setaf 6'
+red='tput setaf 9'
+green='tput setaf 34'
+cyan='tput setaf 39'
 normal='tput sgr0'
 
 ### ### ### ### 
@@ -33,19 +30,19 @@ MODULES_DIR="$RAMDISK_DIR/lib/modules"
 OUT="/Volumes/Android/kernels/out"
 DEFCONFIG="GT-I9070_defconfig" # Default
 KERNEL=kernel.bin.md5
-FAIL="ENDTIME=$SECONDS
-                    echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
-                    $red
-                    echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
-                    echo "Compilation failed - Fix errors and recompile "
-                    echo "Press enter to end script"
-                    $normal
+FAIL="ENDTIME=$SECONDS \
+                    echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n" \
+                    $red \
+                    echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage" \
+                    echo "Compilation failed - Fix errors and recompile " \
+                    echo "Press enter to end script" \
+                    $normal \
                     read ANS"
-DONE="ENDTIME=$SECONDS
-        			echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
-        			$cyan
-        			echo "DONE, PRESS ENTER TO FINISH"
-        			$normal
+DONE="ENDTIME=$SECONDS \
+        			echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n" \
+        			$cyan \
+        			echo "DONE, PRESS ENTER TO FINISH" \
+        			$normal \
         			read ANS"
 
 # More Misc stuff
@@ -60,12 +57,9 @@ $cyan
 echo "***********************************************"
 echo "|~~~~~~~~COMPILING The Stig KERNEL ~~~~~~~~~~~|"
 echo "|---------------------------------------------|"
-$yello
 echo "***********************************************"
 echo "-----------------------------------------------"
-$red
 echo "--------- Toni5830 @ XDA-DEVELOPERS -----------"
-$yello
 echo "-----------------------------------------------"
 echo "***********************************************"
 $normal
