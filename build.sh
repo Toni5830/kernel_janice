@@ -30,20 +30,6 @@ MODULES_DIR="$RAMDISK_DIR/lib/modules"
 OUT="/Volumes/Android/kernels/out"
 DEFCONFIG="GT-I9070_defconfig" # Default
 KERNEL=kernel.bin.md5
-FAIL="ENDTIME=$SECONDS \
-                    echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n" \
-                    $red \
-                    echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage" \
-                    echo "Compilation failed - Fix errors and recompile " \
-                    echo "Press enter to end script" \
-                    $normal \
-                    read ANS"
-DONE="ENDTIME=$SECONDS \
-        			echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n" \
-        			$cyan \
-        			echo "DONE, PRESS ENTER TO FINISH" \
-        			$normal \
-        			read ANS"
 
 # More Misc stuff
 STARTTIME=$SECONDS
@@ -88,12 +74,11 @@ case "$1" in
         echo ">> Building Kernel" 
         make -j$1 ARCH=arm CROSS_COMPILE=$TOOLCHAIN
         $normal
-        echo "Copying modules"
-        find -name '*.ko' -exec cp -av {} $MODULES_DIR/ \;
 
         if [ -a $KERNEL_DIR/arch/arm/boot/zImage ];
         then
-
+            echo "Copying modules"
+            find -name '*.ko' -exec cp -av {} $MODULES_DIR/ \; 
       	    # Build zImage
         	echo ">> Building zImage"
         	cd $KERNEL_DIR 
@@ -113,13 +98,31 @@ case "$1" in
 			        $yellow
         			echo "kernel.bin.md5 at $OUT/kernel.bin.md5"
         			zip -r Stig.zip META-INF kernel.bin.md5
-
-        			$DONE
+        			ENDTIME=$SECONDS
+        			echo "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        			$cyan
+        			echo "DONE, PRESS ENTER TO FINISH"
+        			$normal
+        			read ANS
         		else
-                    $FAIL
+        		    ENDTIME=$SECONDS
+            		echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+                    $red
+                    echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
+                    echo "Compilation failed - Fix errors and recompile "
+                    echo "Press enter to end script"
+                    $normal
+                    read ANS
      		    fi
-        else
-           $FAIL
+     	else
+     	ENDTIME=$SECONDS
+     	echo "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+     	$red
+     	echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
+     	echo "Compilation failed - Fix errors and recompile "
+     	echo "Press enter to end script"
+     	$normal
+     	read ANS
         fi
         ;;
 esac
