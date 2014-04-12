@@ -13,6 +13,8 @@
 #include <linux/spinlock.h>
 #include <linux/slab.h>
 #include <linux/io.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -1121,6 +1123,77 @@ fail:
 	return -ENOMEM;
 }
 
+static int reg_last = 0;
+
+static ssize_t prcmu_wreg_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int reg_val;
+	void __iomem *prcmu_base;
+
+	prcmu_base = __io_address(U8500_PRCMU_BASE);
+	reg_val = readl(prcmu_base + reg_last);
+
+	sprintf(buf, "%#06x %#010x\n", reg_last, reg_val);
+
+	return strlen(buf);
+}
+
+static ssize_t prcmu_wreg_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int reg, val, err;
+	void __iomem *prcmu_base;
+	
+	/* HEX */
+	err = sscanf(buf, "%x %x", &reg, &val);
+
+	if (!err) {
+		pr_err("prcmu-dbg: invalid inputs\n");
+		return -EINVAL;
+	}
+
+	prcmu_base = __io_address(U8500_PRCMU_BASE);
+
+	reg_last = reg;
+
+	pr_info("[PRCMU DBG] %#06x: %#010x\n", reg, val);
+
+	writel(val, prcmu_base + reg);
+	
+	return count;
+}
+
+static struct kobj_attribute prcmu_wreg_interface = __ATTR(wreg, 0600, prcmu_wreg_show, prcmu_wreg_store);
+
+static struct attribute *prcmu_sysfs_debug_attrs[] = {
+	&prcmu_wreg_interface.attr, 
+	NULL,
+};
+
+static struct attribute_group prcmu_sysfs_debug_interface_group = {
+	.attrs = prcmu_sysfs_debug_attrs,
+};
+
+static struct kobject *prcmu_sysfs_debug_kobject;
+
+static int setup_sysfs(void)
+{
+	int ret;
+
+	prcmu_sysfs_debug_kobject = kobject_create_and_add("prcmu", kernel_kobj);
+
+	if (!prcmu_sysfs_debug_kobject) {
+		return -ENOMEM;
+	}
+
+	ret = sysfs_create_group(prcmu_sysfs_debug_kobject, &prcmu_sysfs_debug_interface_group);
+
+	if (ret) {
+		kobject_put(prcmu_sysfs_debug_kobject);
+	}
+
+	return ret;
+}
+
 static __init int prcmu_debug_init(void)
 {
 	spin_lock_init(&ape_sh.lock);
@@ -1148,6 +1221,8 @@ static __init int prcmu_debug_debugfs_init(void)
 	arm_sh.max_states = i;
 
 	ret = setup_debugfs();
+	ret = setup_sysfs();
+
 	return ret;
 }
 late_initcall(prcmu_debug_debugfs_init);
