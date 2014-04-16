@@ -55,6 +55,7 @@ case "$1" in
 		make clean
         rm -rf include/generated include/config
         rm -f .config .version .config.old Module.symvers
+        rm -f scripts/basic/fixdep scripts/conmakehash scripts/genksyms/genksyms scripts/kallsyms scripts/kconfig/conf scripts/mod/mk_elfconfig scripts/mod/modpost
         if [ -a $OUT/$KERNEL ]; then
         	rm -f $OUT/$KERNEL $OUT/Stig.zip
         fi
@@ -78,6 +79,7 @@ case "$1" in
         if [ -a $KERNEL_DIR/arch/arm/boot/zImage ];
         then
             echo "Copying modules"
+            mkdir -p $MODULES_DIR
             find -name '*.ko' -exec cp -av {} $MODULES_DIR/ \; 
       	    # Build zImage
         	echo ">> Building zImage"
@@ -98,8 +100,11 @@ case "$1" in
 			        $yellow
         			echo "kernel.bin.md5 at $OUT/kernel.bin.md5"
         			zip -r Stig.zip META-INF kernel.bin.md5
+        			cd $KERNEL_DIR
         			ENDTIME=$SECONDS
-        			echo "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        			echo " "
+        			echo " "
+        			echo "Finished in $((ENDTIME-STARTTIME)) Seconds"
         			$cyan
         			echo "DONE, PRESS ENTER TO FINISH"
         			$normal
