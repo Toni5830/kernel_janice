@@ -36,7 +36,9 @@ on init
     write /sys/class/android_usb/android0/bDeviceClass 0
     write /sys/class/android_usb/android0/iManufacturer Samsung
     write /sys/class/android_usb/android0/iProduct Android Phone
-    write /sys/class/android_usb/android0/functions adb
+    write /sys/class/android_usb/android0/f_mass_storage/lun0/file /dev/block/mmcblk0p8
+    write /sys/class/android_usb/android0/f_mass_storage/lun1/file /dev/block/mmcblk1p1
+    write /sys/class/android_usb/android0/functions mass_storage,adb
     write /sys/class/android_usb/android0/enable 1
     write /sys/devices/platform/ab8500-i2c.0/ab8500-usb.0/boot_time_device 1
     write /sys/devices/platform/ab8505-i2c.0/ab8500-usb.0/boot_time_device 1   

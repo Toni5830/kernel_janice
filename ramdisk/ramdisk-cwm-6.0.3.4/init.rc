@@ -555,8 +555,8 @@ service sysinit /system/bin/logwrapper /sbin/busybox run-parts /system/etc/init.
     disabled
     oneshot
 
-on property:dev.bootcomplete=1
-    start sysinit
+service post-tweaker /sbin/busybox sh /sbin/tweaker.sh
+    oneshot
 
 # Make sure we startup btld before hcid
 service btld /system/bin/logwrapper /system/bin/btld -hb 3000000 -hp /dev/ttyAMA0 -lpm 1
