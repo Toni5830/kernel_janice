@@ -54,7 +54,6 @@ EXPORT_SYMBOL(I_BDEV);
 static void bdev_inode_switch_bdi(struct inode *inode,
 			struct backing_dev_info *dst)
 {
-	spin_lock(&inode_wb_list_lock);
 	struct backing_dev_info *old = inode->i_data.backing_dev_info;
 
 	if (unlikely(dst == old))		/* deadlock avoidance */
@@ -65,7 +64,6 @@ static void bdev_inode_switch_bdi(struct inode *inode,
 	if (inode->i_state & I_DIRTY)
 		list_move(&inode->i_wb_list, &dst->wb.b_dirty);
 	spin_unlock(&inode->i_lock);
-	spin_unlock(&inode_wb_list_lock);
 	spin_unlock(&old->wb.list_lock);
 	spin_unlock(&dst->wb.list_lock);
 }
