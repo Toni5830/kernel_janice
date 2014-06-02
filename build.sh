@@ -59,7 +59,9 @@ case "$1" in
         	rm -f $OUT/$KERNEL $OUT/Stig.zip
         fi
         ENDTIME=$SECONDS
-		echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        $green
+		echo -e "Finished in $((ENDTIME-STARTTIME)) Seconds"
+		$normal
     ;;
 
     *) if [ -z $1 ]; then
@@ -103,14 +105,15 @@ case "$1" in
         			ENDTIME=$SECONDS
         			echo " "
         			echo " "
+        			$green
         			echo "Finished in $((ENDTIME-STARTTIME)) Seconds"
-        			$cyan
         			echo "DONE, PRESS ENTER TO FINISH"
         			$normal
         			read ANS
         		else
         		    ENDTIME=$SECONDS
-            		echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        		    $green
+            		echo -e "Finished in $((ENDTIME-STARTTIME)) Seconds"
                     $red
                     echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
                     echo "Compilation failed - Fix errors and recompile "
@@ -120,7 +123,8 @@ case "$1" in
      		    fi
      	else
      	ENDTIME=$SECONDS
-     	echo "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+     	$green
+     	echo "Finished in $((ENDTIME-STARTTIME)) Seconds"
      	$red
      	echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
      	echo "Compilation failed - Fix errors and recompile "
