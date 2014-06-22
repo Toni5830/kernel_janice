@@ -1573,7 +1573,6 @@ static int arm_set_rate(unsigned long rate)
 				db8500_prcmu_writel(PRCMU_PLLARM_REG, PLLARM_FREQ100OPP);
 			}
 			#endif
-
 			db8500_prcmu_set_arm_lopp(liveopp_arm[i].arm_opp, i);
 			last_arm_idx = i;
 
