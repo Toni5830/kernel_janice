@@ -22,7 +22,7 @@ normal='tput sgr0'
 # SET SOME PATH VARIABLES
 # Modify these as per requirements
 ROOT="/Volumes/Android/kernels"
-TOOLCHAIN="/Volumes/Android/cm11/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.6/bin/arm-eabi-"
+TOOLCHAIN="/Volumes/Android/cm11/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.7/bin/arm-eabi-"
 KERNEL_DIR="/Volumes/Android/kernels/janice"
 RAMDISK_DIR="/Volumes/Android/kernels/janice/ramdisk/ramdisk-cwm-touch-6.0.3.3"
 MODULES_DIR="$RAMDISK_DIR/lib/modules"
