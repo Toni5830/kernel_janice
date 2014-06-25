@@ -22,8 +22,7 @@ normal='tput sgr0'
 # SET SOME PATH VARIABLES
 # Modify these as per requirements
 ROOT="/Volumes/Android/kernels"
-# Toolchain path = 
-TOOLCHAIN="/Volumes/Android/omni4.4/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.6/bin/arm-eabi-"
+TOOLCHAIN="/Volumes/Android/cm11/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.7/bin/arm-eabi-"
 KERNEL_DIR="/Volumes/Android/kernels/janice"
 RAMDISK_DIR="/Volumes/Android/kernels/janice/ramdisk/ramdisk-cwm-touch-6.0.3.3"
 MODULES_DIR="$RAMDISK_DIR/lib/modules"
@@ -60,7 +59,9 @@ case "$1" in
         	rm -f $OUT/$KERNEL $OUT/Stig.zip
         fi
         ENDTIME=$SECONDS
-		echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        $green
+		echo -e "Finished in $((ENDTIME-STARTTIME)) Seconds"
+		$normal
     ;;
 
     *) if [ -z $1 ]; then
@@ -104,14 +105,15 @@ case "$1" in
         			ENDTIME=$SECONDS
         			echo " "
         			echo " "
+        			$green
         			echo "Finished in $((ENDTIME-STARTTIME)) Seconds"
-        			$cyan
         			echo "DONE, PRESS ENTER TO FINISH"
         			$normal
         			read ANS
         		else
         		    ENDTIME=$SECONDS
-            		echo -e "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+        		    $green
+            		echo -e "Finished in $((ENDTIME-STARTTIME)) Seconds"
                     $red
                     echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
                     echo "Compilation failed - Fix errors and recompile "
@@ -121,7 +123,8 @@ case "$1" in
      		    fi
      	else
      	ENDTIME=$SECONDS
-     	echo "\n\n Finished in $((ENDTIME-STARTTIME)) Seconds\n\n"
+     	$green
+     	echo "Finished in $((ENDTIME-STARTTIME)) Seconds"
      	$red
      	echo "No compiled zImage at $KERNEL_DIR/arch/arm/boot/zImage"
      	echo "Compilation failed - Fix errors and recompile "

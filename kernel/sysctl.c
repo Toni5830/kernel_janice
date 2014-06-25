@@ -96,6 +96,7 @@ extern char core_pattern[];
 extern unsigned int core_pipe_limit;
 extern int pid_max;
 extern int min_free_kbytes;
+extern int extra_free_kbytes;
 extern int min_free_order_shift;
 extern int pid_max_min, pid_max_max;
 extern int sysctl_drop_caches;
@@ -1077,6 +1078,33 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= dirty_writeback_centisecs_handler,
 	},
+#ifdef CONFIG_DYNAMIC_PAGE_WRITEBACK
+	{
+		.procname	= "dynamic_dirty_writeback",
+		.data		= &dyn_dirty_writeback_enabled,
+		.maxlen		= sizeof(dyn_dirty_writeback_enabled),
+		.mode		= 0644,
+		.proc_handler	= dynamic_dirty_writeback_handler,
+		.extra1		= &zero,
+		.extra2		= &one,
+	},
+	{
+		.procname	= "dirty_writeback_active_centisecs",
+		.data		= &dirty_writeback_active_interval,
+		.maxlen		= sizeof(dirty_writeback_active_interval),
+		.mode		= 0644,
+		.proc_handler	= dirty_writeback_active_centisecs_handler,
+		.extra1		= &zero,
+	},
+	{
+		.procname	= "dirty_writeback_suspend_centisecs",
+		.data		= &dirty_writeback_suspend_interval,
+		.maxlen		= sizeof(dirty_writeback_suspend_interval),
+		.mode		= 0644,
+		.proc_handler	= dirty_writeback_suspend_centisecs_handler,
+		.extra1		= &zero,
+	},
+#endif
 	{
 		.procname	= "dirty_expire_centisecs",
 		.data		= &dirty_expire_interval,
@@ -1185,6 +1213,14 @@ static struct ctl_table vm_table[] = {
 		.procname	= "min_free_kbytes",
 		.data		= &min_free_kbytes,
 		.maxlen		= sizeof(min_free_kbytes),
+		.mode		= 0644,
+		.proc_handler	= min_free_kbytes_sysctl_handler,
+		.extra1		= &zero,
+	},
+	{
+		.procname	= "extra_free_kbytes",
+		.data		= &extra_free_kbytes,
+		.maxlen		= sizeof(extra_free_kbytes),
 		.mode		= 0644,
 		.proc_handler	= min_free_kbytes_sysctl_handler,
 		.extra1		= &zero,
@@ -2513,7 +2549,7 @@ static int __do_proc_doulongvec_minmax(void *data, struct ctl_table *table, int 
 	int vleft, first = 1, err = 0;
 	unsigned long page = 0;
 	size_t left;
-	char *kbuf;
+	char *kbuf = NULL;
 
 	if (!data || !table->maxlen || !*lenp || (*ppos && !write)) {
 		*lenp = 0;
