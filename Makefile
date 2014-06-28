@@ -5,7 +5,7 @@ EXTRAVERSION =
 NAME = Sodden Ben Lomond
 
 U8500_DEVFLAGS =-marm -march=armv7-a -mcpu=cortex-a9 -mtune=cortex-a9 -mfpu=neon -mfloat-abi=softfp -fsection-anchors
-U8500_CFLAGS = -Ofast -DNDEBUG -funsafe-loop-optimizations -fivopts -ftree-loop-im -ftree-loop-ivcanon -funswitch-loops -frename-registers -fomit-frame-pointer -fgcse-sm -fgcse-las -fweb -ftracer -fipa-pta
+U8500_CFLAGS = -Ofast -DNDEBUG -fivopts -funswitch-loops -fomit-frame-pointer -ftracer
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
 # More info can be located in ./README
@@ -375,7 +375,6 @@ KBUILD_CFLAGS   := $(U8500_DEVFLAGS) $(U8500_CFLAGS) \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
 
->>>>>>> 283d097... Minor updates to some parts of the kernel
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
