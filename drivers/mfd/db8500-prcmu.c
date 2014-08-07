@@ -665,12 +665,6 @@ int db8500_prcmu_set_display_clocks(void)
 
 	return 0;
 }
-#if defined(CONFIG_MACH_SEC_GOLDEN_CHN) || defined(CONFIG_MACH_JANICE_CHN)
-static u32 db8500_prcmu_tcdm_read(unsigned int reg)
-{
-	return readl(tcdm_base + reg);
-}
-#endif
 
 static u32 db8500_prcmu_read(unsigned int reg)
 {
@@ -719,6 +713,16 @@ void db8500_prcmu_writel_relaxed(u32 reg, u32 value)
 	spin_lock_irqsave(&prcmu_lock, flags);
 	writel_relaxed(value, prcmu_base + reg);
 	spin_unlock_irqrestore(&prcmu_lock, flags);
+}
+
+u32 db8500_prcmu_tcdm_readb(u32 reg)
+{
+	return readb(tcdm_base + reg);
+}
+
+void db8500_prcmu_tcdm_writeb(u32 reg, u32 value)
+{
+	writeb(value, tcdm_base + reg);
 }
 
 u32 db8500_prcmu_tcdm_readl(u32 reg)
@@ -1058,7 +1062,7 @@ static void db8500_prcmu_get_abb_event_buffer(void __iomem **buf)
 
 #define LiveOPP_VER		"1.0.1"
 
-#define NOCHG			    0
+#define NOCHG			0
 #define SET_PLL			1
 #define SET_EXT			1
 #define SET_VOLT		1
@@ -1088,7 +1092,7 @@ static struct liveopp_arm_table liveopp_arm[] = {
 #endif
 	{1000000,  998400, ARM_MAX_OPP, NOCHG,   0x741, NOCHG,   0x0001011A, NOCHG,    0x0B, 0x2F, 0xDB},
 	{1050000, 1049600, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x00030152, SET_VOLT, 0x0B, 0x32, 0xDB},
-	{1100000, 1100800, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x00030156, SET_VOLT, 0x0B, 0x3F, 0xDB},
+	{1100000, 1100800, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x00030156, SET_VOLT, 0x0B, 0x3F, 0x8F},
 	{1150000, 1152000, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x0001011E, SET_VOLT, 0x0B, 0x3F, 0x8F},
 	{1200000, 1200000, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x0004017D, SET_VOLT, 0x0B, 0x3F, 0x8F},
 	{1250000, 1228800, ARM_MAX_OPP, NOCHG,   0x741, SET_PLL, 0x00010120, SET_VOLT, 0x0B, 0x3F, 0x8F},
@@ -2326,7 +2330,7 @@ static int request_panic_pll(u8 clock, bool enable)
 static int request_panic_sysclk(bool enable)
 {
 	int r;
-	unsigned long flags;
+	/* unsigned long flags; */
 
 	r = 0;
 
@@ -2356,7 +2360,7 @@ static int request_panic_sysclk(bool enable)
 static int request_panic_clock(u8 clock, bool enable)
 {
 	u32 val;
-	unsigned long flags;
+	/* unsigned long flags; */
 
 	/* Grab the HW semaphore. */
 	while ((readl(PRCM_SEM) & PRCM_SEM_PRCM_SEM) != 0)
@@ -2594,6 +2598,8 @@ static unsigned long db8500_prcmu_clock_rate(u8 clock)
 		return armss_rate();
 	else if (clock == PRCMU_ARMCLK)
 		return arm_get_rate();
+	else if (clock == PRCMU_PLLARM)
+		return pll_rate(PRCM_PLLARM_FREQ, ROOT_CLOCK_RATE, PLL_RAW);
 	else if (clock == PRCMU_PLLDDR)
 		return pll_rate(PRCM_PLLDDR_FREQ, ROOT_CLOCK_RATE, PLL_RAW);
 	else if (clock == PRCMU_PLLDSI)
@@ -4009,9 +4015,6 @@ static struct prcmu_early_data db8500_early_fops = {
 	.request_clock = db8500_prcmu_request_clock,
 
 	/*  direct register access */
-#if defined(CONFIG_MACH_SEC_GOLDEN_CHN) || defined(CONFIG_MACH_JANICE_CHN)
-	.tcdm_read = db8500_prcmu_tcdm_read,
-#endif
 	.read = db8500_prcmu_read,
 	.write =  db8500_prcmu_write,
 	.write_masked = db8500_prcmu_write_masked,
@@ -4531,10 +4534,22 @@ static void  db8500_prcmu_update_freq(void *pdata)
 	#endif /* CONFIG_DB8500_LIVEOPP */
 	freq_table =
 		(struct cpufreq_frequency_table *)pdata;
+
+	
 	#ifdef CONFIG_DB8500_LIVEOPP
 	pr_info("[LiveOPP] Available freqs: %d\n", ARRAY_SIZE(liveopp_arm));
 	for (i = 0; i < ARRAY_SIZE(liveopp_arm); i++) {
 		freq_table[i].frequency = liveopp_arm[i].freq_show;
+
+		#ifdef CONFIG_MACH_CODINA
+		if (liveopp_arm[i].arm_opp == ARM_MAX_OPP)
+			liveopp_arm[i].arm_opp = ARM_100_OPP;
+
+		if (liveopp_arm[i].freq_show == 1000000) {
+			liveopp_arm[i].set_pllarm = 1;
+			liveopp_arm[i].set_volt = 1;
+		}
+		#endif
 	}
 	#else /* CONFIG_DB8500_LIVEOPP */
 	if  (!db8500_prcmu_has_arm_maxopp())
@@ -4555,7 +4570,6 @@ static void  db8500_prcmu_update_freq(void *pdata)
 	default:
 		break;
 	}
-
 	#endif /* CONFIG_DB8500_LIVEOPP */
 }
 
