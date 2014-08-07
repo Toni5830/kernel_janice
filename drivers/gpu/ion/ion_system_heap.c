@@ -1,5 +1,5 @@
 /*
- * drivers/gpu/ion/ion_priv.h
+ * drivers/gpu/ion/ion_system_heap.c
  *
  * Copyright (C) 2011 Google, Inc.
  *
@@ -14,171 +14,185 @@
  *
  */
 
-#ifndef _ION_PRIV_H
-#define _ION_PRIV_H
-
-#include <linux/kref.h>
-#include <linux/mm_types.h>
-#include <linux/mutex.h>
-#include <linux/rbtree.h>
+#include <linux/err.h>
 #include <linux/ion.h>
+#include <linux/mm.h>
+#include <linux/scatterlist.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include "ion_priv.h"
 
-struct ion_mapping;
+static int ion_system_heap_allocate(struct ion_heap *heap,
+				     struct ion_buffer *buffer,
+				     unsigned long size, unsigned long align,
+				     unsigned long flags)
+{
+	buffer->priv_virt = vmalloc_user(size);
+	if (!buffer->priv_virt)
+		return -ENOMEM;
+	return 0;
+}
 
-struct ion_dma_mapping {
-	struct kref ref;
+void ion_system_heap_free(struct ion_buffer *buffer)
+{
+	vfree(buffer->priv_virt);
+}
+
+struct scatterlist *ion_system_heap_map_dma(struct ion_heap *heap,
+					    struct ion_buffer *buffer)
+{
 	struct scatterlist *sglist;
+	struct page *page;
+	int i;
+	int npages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+	void *vaddr = buffer->priv_virt;
+
+	sglist = vmalloc(npages * sizeof(struct scatterlist));
+	if (!sglist)
+		return ERR_PTR(-ENOMEM);
+	memset(sglist, 0, npages * sizeof(struct scatterlist));
+	sg_init_table(sglist, npages);
+	for (i = 0; i < npages; i++) {
+		page = vmalloc_to_page(vaddr);
+		if (!page)
+			goto end;
+		sg_set_page(&sglist[i], page, PAGE_SIZE, 0);
+		vaddr += PAGE_SIZE;
+	}
+	/* XXX do cache maintenance for dma? */
+	return sglist;
+end:
+	vfree(sglist);
+	return NULL;
+}
+
+void ion_system_heap_unmap_dma(struct ion_heap *heap,
+			       struct ion_buffer *buffer)
+{
+	/* XXX undo cache maintenance for dma? */
+	if (buffer->sglist)
+		vfree(buffer->sglist);
+}
+
+void *ion_system_heap_map_kernel(struct ion_heap *heap,
+				 struct ion_buffer *buffer)
+{
+	return buffer->priv_virt;
+}
+
+void ion_system_heap_unmap_kernel(struct ion_heap *heap,
+				  struct ion_buffer *buffer)
+{
+}
+
+int ion_system_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
+			     struct vm_area_struct *vma)
+{
+	return remap_vmalloc_range(vma, buffer->priv_virt, vma->vm_pgoff);
+}
+
+static struct ion_heap_ops vmalloc_ops = {
+	.allocate = ion_system_heap_allocate,
+	.free = ion_system_heap_free,
+	.map_dma = ion_system_heap_map_dma,
+	.unmap_dma = ion_system_heap_unmap_dma,
+	.map_kernel = ion_system_heap_map_kernel,
+	.unmap_kernel = ion_system_heap_unmap_kernel,
+	.map_user = ion_system_heap_map_user,
 };
 
-struct ion_kernel_mapping {
-	struct kref ref;
-	void *vaddr;
-};
-
-struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
-
-/**
- * struct ion_buffer - metadata for a particular buffer
- * @ref:		refernce count
- * @node:		node in the ion_device buffers tree
- * @dev:		back pointer to the ion_device
- * @heap:		back pointer to the heap the buffer came from
- * @flags:		buffer specific flags
- * @size:		size of the buffer
- * @priv_virt:		private data to the buffer representable as
- *			a void *
- * @priv_phys:		private data to the buffer representable as
- *			an ion_phys_addr_t (and someday a phys_addr_t)
- * @lock:		protects the buffers cnt fields
- * @kmap_cnt:		number of times the buffer is mapped to the kernel
- * @vaddr:		the kenrel mapping if kmap_cnt is not zero
- * @dmap_cnt:		number of times the buffer is mapped for dma
- * @sglist:		the scatterlist for the buffer is dmap_cnt is not zero
-*/
-struct ion_buffer {
-	struct kref ref;
-	struct rb_node node;
-	struct ion_device *dev;
+struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused)
+{
 	struct ion_heap *heap;
-	unsigned long flags;
-	size_t size;
-	union {
-		void *priv_virt;
-		ion_phys_addr_t priv_phys;
-	};
-	struct mutex lock;
-	int kmap_cnt;
-	void *vaddr;
-	int dmap_cnt;
+
+	heap = kzalloc(sizeof(struct ion_heap), GFP_KERNEL);
+	if (!heap)
+		return ERR_PTR(-ENOMEM);
+	heap->ops = &vmalloc_ops;
+	heap->type = ION_HEAP_TYPE_SYSTEM;
+	return heap;
+}
+
+void ion_system_heap_destroy(struct ion_heap *heap)
+{
+	kfree(heap);
+}
+
+static int ion_system_contig_heap_allocate(struct ion_heap *heap,
+					   struct ion_buffer *buffer,
+					   unsigned long len,
+					   unsigned long align,
+					   unsigned long flags)
+{
+	buffer->priv_virt = kzalloc(len, GFP_KERNEL);
+	if (!buffer->priv_virt)
+		return -ENOMEM;
+	return 0;
+}
+
+void ion_system_contig_heap_free(struct ion_buffer *buffer)
+{
+	kfree(buffer->priv_virt);
+}
+
+static int ion_system_contig_heap_phys(struct ion_heap *heap,
+				       struct ion_buffer *buffer,
+				       ion_phys_addr_t *addr, size_t *len)
+{
+	*addr = virt_to_phys(buffer->priv_virt);
+	*len = buffer->size;
+	return 0;
+}
+
+struct scatterlist *ion_system_contig_heap_map_dma(struct ion_heap *heap,
+						   struct ion_buffer *buffer)
+{
 	struct scatterlist *sglist;
+
+	sglist = vmalloc(sizeof(struct scatterlist));
+	if (!sglist)
+		return ERR_PTR(-ENOMEM);
+	sg_init_table(sglist, 1);
+	sg_set_page(sglist, virt_to_page(buffer->priv_virt), buffer->size, 0);
+	return sglist;
+}
+
+int ion_system_contig_heap_map_user(struct ion_heap *heap,
+				    struct ion_buffer *buffer,
+				    struct vm_area_struct *vma)
+{
+	unsigned long pfn = __phys_to_pfn(virt_to_phys(buffer->priv_virt));
+	return remap_pfn_range(vma, vma->vm_start, pfn + vma->vm_pgoff,
+			       vma->vm_end - vma->vm_start,
+			       vma->vm_page_prot);
+
+}
+
+static struct ion_heap_ops kmalloc_ops = {
+	.allocate = ion_system_contig_heap_allocate,
+	.free = ion_system_contig_heap_free,
+	.phys = ion_system_contig_heap_phys,
+	.map_dma = ion_system_contig_heap_map_dma,
+	.unmap_dma = ion_system_heap_unmap_dma,
+	.map_kernel = ion_system_heap_map_kernel,
+	.unmap_kernel = ion_system_heap_unmap_kernel,
+	.map_user = ion_system_contig_heap_map_user,
 };
 
-/**
- * struct ion_heap_ops - ops to operate on a given heap
- * @allocate:		allocate memory
- * @free:		free memory
- * @phys		get physical address of a buffer (only define on
- *			physically contiguous heaps)
- * @map_dma		map the memory for dma to a scatterlist
- * @unmap_dma		unmap the memory for dma
- * @map_kernel		map memory to the kernel
- * @unmap_kernel	unmap memory to the kernel
- * @map_user		map memory to userspace
- */
-struct ion_heap_ops {
-	int (*allocate) (struct ion_heap *heap,
-			 struct ion_buffer *buffer, unsigned long len,
-			 unsigned long align, unsigned long flags);
-	void (*free) (struct ion_buffer *buffer);
-	int (*phys) (struct ion_heap *heap, struct ion_buffer *buffer,
-		     ion_phys_addr_t *addr, size_t *len);
-	struct scatterlist *(*map_dma) (struct ion_heap *heap,
-					struct ion_buffer *buffer);
-	void (*unmap_dma) (struct ion_heap *heap, struct ion_buffer *buffer);
-	void * (*map_kernel) (struct ion_heap *heap, struct ion_buffer *buffer);
-	void (*unmap_kernel) (struct ion_heap *heap, struct ion_buffer *buffer);
-	int (*map_user) (struct ion_heap *mapper, struct ion_buffer *buffer,
-			 struct vm_area_struct *vma);
-};
+struct ion_heap *ion_system_contig_heap_create(struct ion_platform_heap *unused)
+{
+	struct ion_heap *heap;
 
-/**
- * struct ion_heap - represents a heap in the system
- * @node:		rb node to put the heap on the device's tree of heaps
- * @dev:		back pointer to the ion_device
- * @type:		type of heap
- * @ops:		ops struct as above
- * @id:			id of heap, also indicates priority of this heap when
- *			allocating.  These are specified by platform data and
- *			MUST be unique
- * @name:		used for debugging
- *
- * Represents a pool of memory from which buffers can be made.  In some
- * systems the only heap is regular system memory allocated via vmalloc.
- * On others, some blocks might require large physically contiguous buffers
- * that are allocated from a specially reserved heap.
- */
-struct ion_heap {
-	struct rb_node node;
-	struct ion_device *dev;
-	enum ion_heap_type type;
-	struct ion_heap_ops *ops;
-	int id;
-	const char *name;
-};
+	heap = kzalloc(sizeof(struct ion_heap), GFP_KERNEL);
+	if (!heap)
+		return ERR_PTR(-ENOMEM);
+	heap->ops = &kmalloc_ops;
+	heap->type = ION_HEAP_TYPE_SYSTEM_CONTIG;
+	return heap;
+}
 
-/**
- * ion_device_create - allocates and returns an ion device
- * @custom_ioctl:	arch specific ioctl function if applicable
- *
- * returns a valid device or -PTR_ERR
- */
-struct ion_device *ion_device_create(long (*custom_ioctl)
-				     (struct ion_client *client,
-				      unsigned int cmd,
-				      unsigned long arg));
+void ion_system_contig_heap_destroy(struct ion_heap *heap)
+{
+	kfree(heap);
+}
 
-/**
- * ion_device_destroy - free and device and it's resource
- * @dev:		the device
- */
-void ion_device_destroy(struct ion_device *dev);
-
-/**
- * ion_device_add_heap - adds a heap to the ion device
- * @dev:		the device
- * @heap:		the heap to add
- */
-void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap);
-
-/**
- * functions for creating and destroying the built in ion heaps.
- * architectures can add their own custom architecture specific
- * heaps as appropriate.
- */
-
-struct ion_heap *ion_heap_create(struct ion_platform_heap *);
-void ion_heap_destroy(struct ion_heap *);
-
-struct ion_heap *ion_system_heap_create(struct ion_platform_heap *);
-void ion_system_heap_destroy(struct ion_heap *);
-
-struct ion_heap *ion_system_contig_heap_create(struct ion_platform_heap *);
-void ion_system_contig_heap_destroy(struct ion_heap *);
-
-struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *);
-void ion_carveout_heap_destroy(struct ion_heap *);
-/**
- * kernel api to allocate/free from carveout -- used when carveout is
- * used to back an architecture specific custom heap
- */
-ion_phys_addr_t ion_carveout_allocate(struct ion_heap *heap, unsigned long size,
-				      unsigned long align);
-void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
-		       unsigned long size);
-/**
- * The carveout heap returns physical addresses, since 0 may be a valid
- * physical address, this is used to indicate allocation failed
- */
-#define ION_CARVEOUT_ALLOCATE_FAIL -1
-
-#endif /* _ION_PRIV_H */

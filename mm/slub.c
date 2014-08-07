@@ -789,6 +789,7 @@ static int on_freelist(struct kmem_cache *s, struct page *page, void *search)
 			} else {
 				slab_err(s, page, "Freepointer corrupt");
 				page->freelist = NULL;
+				page->inuse = page->objects;
 				slab_fix(s, "Freelist cleared");
 				return 0;
 			}
@@ -1274,7 +1275,7 @@ static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
 	set_freepointer(s, last, NULL);
 
 	page->freelist = start;
-	page->inuse = page->objects;
+	page->inuse = 0;
 out:
 	return page;
 }
@@ -1816,6 +1817,9 @@ static void *__slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 	c = this_cpu_ptr(s->cpu_slab);
 #endif
 
+	/* We handle __GFP_ZERO in the caller */
+	gfpflags &= ~__GFP_ZERO;
+
 	page = c->page;
 	if (!page)
 		goto new_slab;
@@ -1893,6 +1897,7 @@ debug:
 	page->inuse++;
 	page->freelist = get_freepointer(s, object);
 	deactivate_slab(s, c);
+	c->page = NULL;
 	c->node = NUMA_NO_NODE;
 	local_irq_restore(flags);
 	return object;
@@ -2378,7 +2383,7 @@ static void early_kmem_cache_node_alloc(int node)
 	n = page->freelist;
 	BUG_ON(!n);
 	page->freelist = get_freepointer(kmem_cache_node, n);
-	page->inuse = 1;
+	page->inuse++;
 	kmem_cache_node->node[node] = n;
 #ifdef CONFIG_SLUB_DEBUG
 	init_object(kmem_cache_node, n, SLUB_RED_ACTIVE);
@@ -2663,13 +2668,13 @@ static void list_slab_objects(struct kmem_cache *s, struct page *page,
 
 /*
  * Attempt to free all partial slabs on a node.
- * This is called from kmem_cache_close(). We must be the last thread
- * using the cache and therefore we do not need to lock anymore.
  */
 static void free_partial(struct kmem_cache *s, struct kmem_cache_node *n)
 {
+	unsigned long flags;
 	struct page *page, *h;
 
+	spin_lock_irqsave(&n->list_lock, flags);
 	list_for_each_entry_safe(page, h, &n->partial, lru) {
 		if (!page->inuse) {
 			__remove_partial(n, page);
@@ -2679,6 +2684,7 @@ static void free_partial(struct kmem_cache *s, struct kmem_cache_node *n)
 				"Objects remaining on kmem_cache_close()");
 		}
 	}
+	spin_unlock_irqrestore(&n->list_lock, flags);
 }
 
 /*
@@ -2712,7 +2718,6 @@ void kmem_cache_destroy(struct kmem_cache *s)
 	s->refcount--;
 	if (!s->refcount) {
 		list_del(&s->list);
-		up_write(&slub_lock);
 		if (kmem_cache_close(s)) {
 			printk(KERN_ERR "SLUB %s: %s called for cache that "
 				"still has objects.\n", s->name, __func__);
@@ -2721,8 +2726,8 @@ void kmem_cache_destroy(struct kmem_cache *s)
 		if (s->flags & SLAB_DESTROY_BY_RCU)
 			rcu_barrier();
 		sysfs_slab_remove(s);
-	} else
-		up_write(&slub_lock);
+	}
+	up_write(&slub_lock);
 }
 EXPORT_SYMBOL(kmem_cache_destroy);
 
@@ -3004,23 +3009,29 @@ int kmem_cache_shrink(struct kmem_cache *s)
 		 * list_lock. page->inuse here is the upper limit.
 		 */
 		list_for_each_entry_safe(page, t, &n->partial, lru) {
-			list_move(&page->lru, slabs_by_inuse + page->inuse);
-			if (!page->inuse)
-				n->nr_partial--;
+			if (!page->inuse && slab_trylock(page)) {
+				/*
+				 * Must hold slab lock here because slab_free
+				 * may have freed the last object and be
+				 * waiting to release the slab.
+				 */
+				__remove_partial(n, page);
+				slab_unlock(page);
+				discard_slab(s, page);
+			} else {
+				list_move(&page->lru,
+				slabs_by_inuse + page->inuse);
+			}
 		}
 
 		/*
 		 * Rebuild the partial list with the slabs filled up most
 		 * first and the least used slabs at the end.
 		 */
-		for (i = objects - 1; i > 0; i--)
+		for (i = objects - 1; i >= 0; i--)
 			list_splice(slabs_by_inuse + i, n->partial.prev);
 
 		spin_unlock_irqrestore(&n->list_lock, flags);
-
-		/* Release empty slabs */
-		list_for_each_entry_safe(page, t, slabs_by_inuse, lru)
-			discard_slab(s, page);
 	}
 
 	kfree(slabs_by_inuse);

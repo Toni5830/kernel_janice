@@ -124,33 +124,21 @@ static void dec_rt_migration(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 	update_rt_migration(rt_rq);
 }
 
-static inline int has_pushable_tasks(struct rq *rq)
-{
-	return !plist_head_empty(&rq->rt.pushable_tasks);
-}
-
 static void enqueue_pushable_task(struct rq *rq, struct task_struct *p)
 {
 	plist_del(&p->pushable_tasks, &rq->rt.pushable_tasks);
 	plist_node_init(&p->pushable_tasks, p->prio);
 	plist_add(&p->pushable_tasks, &rq->rt.pushable_tasks);
-
-	/* Update the highest prio pushable task */
-	if (p->prio < rq->rt.highest_prio.next)
-		rq->rt.highest_prio.next = p->prio;
 }
 
 static void dequeue_pushable_task(struct rq *rq, struct task_struct *p)
 {
 	plist_del(&p->pushable_tasks, &rq->rt.pushable_tasks);
+}
 
-	/* Update the new highest prio pushable task */
-	if (has_pushable_tasks(rq)) {
-		p = plist_first_entry(&rq->rt.pushable_tasks,
-				      struct task_struct, pushable_tasks);
-		rq->rt.highest_prio.next = p->prio;
-	} else
-		rq->rt.highest_prio.next = MAX_RT_PRIO;
+static inline int has_pushable_tasks(struct rq *rq)
+{
+	return !plist_head_empty(&rq->rt.pushable_tasks);
 }
 
 #else
@@ -698,19 +686,56 @@ static void update_curr_rt(struct rq *rq)
 
 #if defined CONFIG_SMP
 
+static struct task_struct *pick_next_highest_task_rt(struct rq *rq, int cpu);
+
+static inline int next_prio(struct rq *rq)
+{
+	struct task_struct *next = pick_next_highest_task_rt(rq, rq->cpu);
+
+	if (next && rt_prio(next->prio))
+		return next->prio;
+	else
+		return MAX_RT_PRIO;
+}
+
 static void
 inc_rt_prio_smp(struct rt_rq *rt_rq, int prio, int prev_prio)
 {
 	struct rq *rq = rq_of_rt_rq(rt_rq);
 
-	if (rq->online && prio < prev_prio)
-		cpupri_set(&rq->rd->cpupri, rq->cpu, prio);
+	if (prio < prev_prio) {
+
+		/*
+		 * If the new task is higher in priority than anything on the
+		 * run-queue, we know that the previous high becomes our
+		 * next-highest.
+		 */
+		rt_rq->highest_prio.next = prev_prio;
+
+		if (rq->online)
+			cpupri_set(&rq->rd->cpupri, rq->cpu, prio);
+
+	} else if (prio == rt_rq->highest_prio.curr)
+		/*
+		 * If the next task is equal in priority to the highest on
+		 * the run-queue, then we implicitly know that the next highest
+		 * task cannot be any lower than current
+		 */
+		rt_rq->highest_prio.next = prio;
+	else if (prio < rt_rq->highest_prio.next)
+		/*
+		 * Otherwise, we need to recompute next-highest
+		 */
+		rt_rq->highest_prio.next = next_prio(rq);
 }
 
 static void
 dec_rt_prio_smp(struct rt_rq *rt_rq, int prio, int prev_prio)
 {
 	struct rq *rq = rq_of_rt_rq(rt_rq);
+
+	if (rt_rq->rt_nr_running && (prio <= rt_rq->highest_prio.next))
+		rt_rq->highest_prio.next = next_prio(rq);
 
 	if (rq->online && rt_rq->highest_prio.curr != prev_prio)
 		cpupri_set(&rq->rd->cpupri, rq->cpu, rt_rq->highest_prio.curr);
@@ -924,8 +949,6 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 
 	if (!task_current(rq, p) && p->rt.nr_cpus_allowed > 1)
 		enqueue_pushable_task(rq, p);
-
-	inc_nr_running(rq);
 }
 
 static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
@@ -936,8 +959,6 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	dequeue_rt_entity(rt_se);
 
 	dequeue_pushable_task(rq, p);
-
-	dec_nr_running(rq);
 }
 
 /*
@@ -984,12 +1005,10 @@ select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 	struct rq *rq;
 	int cpu;
 
+	if (sd_flag != SD_BALANCE_WAKE)
+		return smp_processor_id();
+
 	cpu = task_cpu(p);
-
-	/* For anything but wake ups, just return the task_cpu */
-	if (sd_flag != SD_BALANCE_WAKE && sd_flag != SD_BALANCE_FORK)
-		goto out;
-
 	rq = cpu_rq(cpu);
 
 	rcu_read_lock();
@@ -1028,7 +1047,6 @@ select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 	}
 	rcu_read_unlock();
 
-out:
 	return cpu;
 }
 
@@ -1148,6 +1166,7 @@ static struct task_struct *pick_next_task_rt(struct rq *rq)
 static void put_prev_task_rt(struct rq *rq, struct task_struct *p)
 {
 	update_curr_rt(rq);
+	p->se.exec_start = 0;
 
 	/*
 	 * The previous task needs to be made eligible for pushing
@@ -1363,7 +1382,6 @@ static int push_rt_task(struct rq *rq)
 {
 	struct task_struct *next_task;
 	struct rq *lowest_rq;
-	int ret = 0;
 
 	if (!rq->rt.overloaded)
 		return 0;
@@ -1401,7 +1419,7 @@ retry:
 	if (!lowest_rq) {
 		struct task_struct *task;
 		/*
-		 * find_lock_lowest_rq releases rq->lock
+		 * find lock_lowest_rq releases rq->lock
 		 * so it is possible that next_task has migrated.
 		 *
 		 * We need to make sure that the task is still on the same
@@ -1411,11 +1429,12 @@ retry:
 		task = pick_next_pushable_task(rq);
 		if (task_cpu(next_task) == rq->cpu && task == next_task) {
 			/*
-			 * The task hasn't migrated, and is still the next
-			 * eligible task, but we failed to find a run-queue
-			 * to push it to.  Do not retry in this case, since
-			 * other cpus will pull from us when ready.
+			 * If we get here, the task hasn't moved at all, but
+			 * it has failed to push.  We will not try again,
+			 * since the other cpus will pull from us when they
+			 * are ready.
 			 */
+			dequeue_pushable_task(rq, next_task);
 			goto out;
 		}
 
@@ -1434,7 +1453,6 @@ retry:
 	deactivate_task(rq, next_task, 0);
 	set_task_cpu(next_task, lowest_rq->cpu);
 	activate_task(lowest_rq, next_task, 0);
-	ret = 1;
 
 	resched_task(lowest_rq->curr);
 
@@ -1443,7 +1461,7 @@ retry:
 out:
 	put_task_struct(next_task);
 
-	return ret;
+	return 1;
 }
 
 static void push_rt_tasks(struct rq *rq)
