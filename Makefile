@@ -195,7 +195,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #ARCH		?= $(SUBARCH)
 #CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 ARCH            ?= arm
-CROSS_COMPILE   = /Volumes/Android/cm11/prebuilts/gcc/darwin-x86/arm/arm-eabi-4.7/bin/arm-eabi-
+CROSS_COMPILE   = /home/tonello/Android/Source/cm11/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)

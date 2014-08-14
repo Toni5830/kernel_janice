@@ -936,6 +936,12 @@ static struct clk ddr_pll = {
 	.cg_sel = PRCMU_PLLDDR,
 };
 
+static struct clk arm_pll = {
+	.name = "arm_pll",
+	.ops = &pll_ops,
+	.cg_sel = PRCMU_PLLARM,
+};
+
 static struct clk ulp38m4 = {
 	.name = "ulp38m4",
 	.rate = 38400000,
