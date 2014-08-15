@@ -63,6 +63,12 @@ include/config
 include/linux/version.h
 include/generated
 arch/*/include/generated
+scripts/genksyms/keywords.c
+scripts/genksyms/lex.c
+scripts/genksyms/parse.c
+scripts/genksyms/parse.h
+scripts/kconfig/lex.zconf.c
+
 
 # stgit generated dirs
 patches-*
@@ -80,6 +86,7 @@ GPATH
 GRTAGS
 GSYMS
 GTAGS
+kernel.bin.md5
 
 *.orig
 *~
