@@ -100,6 +100,7 @@ static struct task_struct *lowmem_deathpending[LOWMEM_DEATHPENDING_DEPTH] = {NUL
 #else
 static struct task_struct *lowmem_deathpending;
 #endif
+static unsigned int timeout = HZ;
 static unsigned long lowmem_deathpending_timeout;
 
 #define lowmem_print(level, x...)			\
@@ -312,7 +313,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     selected->pid, selected->comm,
 			     selected_oom_adj, selected_tasksize);
 		lowmem_deathpending = selected;
-		lowmem_deathpending_timeout = jiffies + HZ;
+		lowmem_deathpending_timeout = jiffies + timeout;
 		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
 	}
@@ -485,6 +486,7 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
+module_param_named(timeout, timeout, uint, S_IRUGO | S_IWUSR);
 
 #ifdef CONFIG_ZRAM_FOR_ANDROID
 module_param_named(nr_reclaim, number_of_reclaim_pages, uint, S_IRUSR | S_IWUSR);
