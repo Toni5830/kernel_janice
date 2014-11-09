@@ -1105,36 +1105,16 @@ static int liveopp_start = 0;
 #endif
 
 /**
- * PLLARM REGISTER: 0xAABBCCDD
- * AA - OPP_50_enabled
- * BB - divisor
- * CC - unknown
- * DD - multiplier
- *
- * when going from OPP100 to  OPP50 mode, it doesn't set BB and DD, only AA to 01
- * and when going 50 -> 100, only AA=00, so from 700MHz it'll do 1.4GHz
- * OPPMAX -> OPP100/50 sets pll BB, DD and optionally AA (for opp 50)
- * 
- */
-
-/**
- * VARM REG CHANGES
- * OPP_EXT -> OPP* 0C = 0x12
- * OPP* -> OPPMAX 0B = 0x32
- * OPP* -> OPP100 0B = 0x28
- * NO-OPS:
- *   - OPP* -> OPPEXT
- *   - OPP100 -> OPP50
- *   - OPPMAX -> OPP50
- */
-
-/**
  * Hard-coded Custom ARM Frequency and Voltage Table
+ * 
+ * cocafe: 
+ * 	References of PLL register bits: dbx500-prcmu-regs.h L#138
+ * 
  */
 
 static struct liveopp_arm_table liveopp_arm[] = {
 //	| CLK            | PLL       | VDD | VBB | DDR | APE |
-	{  50000,   46080, 0x00050106, 0x16, 0xDB,  25,  25},
+//	{  50000,   46080, 0x00050106, 0x16, 0xDB,  25,  25},
 	{ 100000,   99840, 0x0005010D, 0x17, 0xDB,  25,  25},
 	{ 200000,  199680, 0x0005011A, 0x18, 0xDB,  25,  25},
 	{ 300000,  299520, 0x00050127, 0x19, 0xDB,  25,  25},
@@ -1143,11 +1123,11 @@ static struct liveopp_arm_table liveopp_arm[] = {
 	{ 600000,  599040, 0x0005014E, 0x20, 0xDB,  50,  50},
 	{ 700000,  698880, 0x0005015B, 0x22, 0xDB,  50,  50},
 	{ 800000,  798720, 0x00050168, 0x24, 0xDB, 100,  50},
-	{ 900000,  898560, 0x00050175, 0x29, 0xDB, 100, 100},
+	{ 900000,  898560, 0x00050175, 0x29, 0xDB, 100,  50},
 	{1000000,  998400, 0x00050182, 0x2F, 0xDB, 100, 100},
 	{1100000, 1098240, 0x0005018F, 0x34, 0x8F, 100, 100},
 	{1200000, 1198080, 0x0005019C, 0x35, 0x8F, 100, 100},
-	{1250000, 1244160, 0x000501A2, 0x35, 0x8F, 100, 100},
+	{1250000, 1228800, 0x000501A0, 0x35, 0x8F, 100, 100},
 };
 
 static const char *armopp_name[] = 
@@ -1192,22 +1172,40 @@ static inline void liveopp_update_cpuhw(struct liveopp_arm_table table,
 					int last_idx, 
 					int next_idx)
 {
+	u8 vdd;
+	u8 vbb;
+	bool update_vdd;
+	bool update_vbb;
+
 	mutex_lock(&liveopp_lock);
 
 	if (last_idx == next_idx)
 		goto out;
 
+	prcmu_abb_read(AB8500_REGU_CTRL2, AB8500_VARM_SEL1, &vdd, 1);
+	prcmu_abb_read(AB8500_REGU_CTRL2, AB8500_VBBX_REG,  &vbb, 1);
+
+	update_vdd = (table.varm_raw != vdd) ? 1 : 0;
+	update_vbb = (table.vbbx_raw != vbb) ? 1 : 0;
+
 	if (last_idx < next_idx) {
-		prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VBBX_REG,  &table.vbbx_raw, 1);
-		prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VARM_SEL1, &table.varm_raw, 1);
-		udelay(80);
+		if (update_vbb)
+			prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VBBX_REG,  &table.vbbx_raw, 1);
+		if (update_vdd)
+			prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VARM_SEL1, &table.varm_raw, 1);
+
+		udelay(70);
 		db8500_prcmu_writel(PRCMU_PLLARM_REG, table.pllarm_raw);
 	} else {
 		db8500_prcmu_writel(PRCMU_PLLARM_REG, table.pllarm_raw);
-		udelay(20);
-		prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VARM_SEL1, &table.varm_raw, 1);
-		prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VBBX_REG,  &table.vbbx_raw, 1);
 		udelay(40);
+
+		if (update_vdd)
+			prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VARM_SEL1, &table.varm_raw, 1);
+		if (update_vbb)
+			prcmu_abb_write(AB8500_REGU_CTRL2, AB8500_VBBX_REG,  &table.vbbx_raw, 1);
+
+		udelay(20);
 	}
 
 	/*
