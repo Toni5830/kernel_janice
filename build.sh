@@ -22,7 +22,7 @@ normal='tput sgr0'
 # SET SOME PATH VARIABLES
 # Modify these as per requirements
 ROOT="/home/tonello/Android/Source"
-TOOLCHAIN="$ROOT/cm11/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-"
+TOOLCHAIN="$ROOT/cm11/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-"
 KERNEL_DIR="$ROOT/kernels/janice"
 RAMDISK_DIR="$KERNEL_DIR/ramdisk/ramdisk-twrp-2.6.3.0"
 MODULES_DIR="$RAMDISK_DIR/lib/modules"
