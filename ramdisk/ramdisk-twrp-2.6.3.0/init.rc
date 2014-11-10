@@ -287,6 +287,7 @@ on post-fs-data
 on boot
 # SISO-ANDR-PERF :: START Changing governor to performance and scheduler to noop once boot is started
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor	performance
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 200000
 #   write /sys/block/mmcblk0/queue/scheduler noop
 # SISO-ANDR-PERF :: END HERE
 
@@ -419,6 +420,7 @@ on nonencrypted
 on property:sys.boot_completed=1
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor	ondemand
 #   write /sys/block/mmcblk0/queue/scheduler cfq
+#   write /sys/module/lowmemorykiller/parameters/minfree 11520,16896,18432,21760,24576,29440
 # SISO-ANDR-PERF :: END HERE
 
 
